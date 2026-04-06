@@ -241,7 +241,7 @@ input:focus, select:focus { outline: none; border-color: #1D9E75; box-shadow: 0 
 <script>
 // ── PWA Service Worker ──────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.register('/expense-tracker/sw.js', { scope: '/expense-tracker/' }).catch(() => {});
 }
 
 // ── Install prompt ──────────────────────────────────────────────────────
