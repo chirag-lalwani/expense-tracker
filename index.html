@@ -100,7 +100,7 @@ input:focus, select:focus { outline: none; border-color: #1D9E75; box-shadow: 0 
       <div class="metric"><div class="metric-label">This month spent</div><div class="metric-val danger" id="ov-spent">₹0</div></div>
       <div class="metric"><div class="metric-label">Budget remaining</div><div class="metric-val success" id="ov-left">₹0</div></div>
       <div class="metric"><div class="metric-label">Transactions</div><div class="metric-val" id="ov-count">0</div></div>
-      <div class="metric"><div class="metric-label">Recurring/mo</div><div class="metric-val" id="ov-recurring">₹0</div></div>
+      <div class="metric"><div class="metric-label">Avg per expense</div><div class="metric-val" id="ov-recurring">₹0</div></div>
     </div>
     <div class="card"><div class="card-title">Recent expenses</div><div id="recent-list"><div class="empty">No expenses yet</div></div></div>
     <div class="card"><div class="card-title">Budget overview</div><div id="ov-budgets"><div style="font-size:13px;color:#aaa">No budgets set yet</div></div></div>
@@ -134,11 +134,20 @@ input:focus, select:focus { outline: none; border-color: #1D9E75; box-shadow: 0 
         <label>Family member</label>
         <div class="member-chips" id="f-member-chips"></div>
       </div>
-      <div class="field"><label>Notes (optional)</label><input id="f-notes" placeholder="Any extra details" /></div>
-      <div class="toggle-row">
-        <label class="toggle"><input type="checkbox" id="f-recurring"><span class="slider-tog"></span></label>
-        <span style="font-size:13px;color:#666;">Recurring monthly</span>
+      <div class="row2">
+        <div class="field"><label>Payment mode</label>
+          <select id="f-payment">
+            <option value="">— Select —</option>
+            <option value="UPI">UPI</option>
+            <option value="Cash">Cash</option>
+            <option value="INB">INB (Internet Banking)</option>
+            <option value="Credit Card">Credit Card</option>
+            <option value="Debit Card">Debit Card</option>
+          </select>
+        </div>
+        <div class="field"><label>Vendor (optional)</label><input id="f-vendor" placeholder="e.g. Swiggy, DMart" /></div>
       </div>
+      <div class="field"><label>Notes (optional)</label><input id="f-notes" placeholder="Any extra details" /></div>
       <div style="display:flex;gap:8px;">
         <button class="btn primary" style="flex:1" onclick="addExpense()">Save expense</button>
         <button class="btn" onclick="clearForm()">Clear</button>
@@ -219,9 +228,18 @@ input:focus, select:focus { outline: none; border-color: #1D9E75; box-shadow: 0 
       <div class="member-chips" id="e-member-chips"></div>
     </div>
     <div class="field"><label>Notes</label><input id="e-notes" /></div>
-    <div class="toggle-row">
-      <label class="toggle"><input type="checkbox" id="e-recurring"><span class="slider-tog"></span></label>
-      <span style="font-size:13px;color:#666;">Recurring monthly</span>
+    <div class="row2">
+      <div class="field"><label>Payment mode</label>
+        <select id="e-payment">
+          <option value="">— Select —</option>
+          <option value="UPI">UPI</option>
+          <option value="Cash">Cash</option>
+          <option value="INB">INB (Internet Banking)</option>
+          <option value="Credit Card">Credit Card</option>
+          <option value="Debit Card">Debit Card</option>
+        </select>
+      </div>
+      <div class="field"><label>Vendor</label><input id="e-vendor" placeholder="e.g. Swiggy, DMart" /></div>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn primary" style="flex:1" onclick="saveEdit()">Save</button>
@@ -443,18 +461,19 @@ function addExpense() {
   const cat = document.getElementById('f-cat').value;
   const subcat = document.getElementById('f-subcat').value || '';
   const notes = document.getElementById('f-notes').value.trim();
-  const recurring = document.getElementById('f-recurring').checked;
+  const payment = document.getElementById('f-payment').value;
+  const vendor = document.getElementById('f-vendor').value.trim();
   if (!desc || !amount || amount <= 0) { alert('Please enter a description and valid amount.'); return; }
-  expenses.unshift({ id: Date.now().toString(), desc, amount, date, category: cat, subCategory: subcat, member: fSelMember || null, notes, recurring });
+  expenses.unshift({ id: Date.now().toString(), desc, amount, date, category: cat, subCategory: subcat, member: fSelMember || null, notes, payment, vendor });
   saveData(expenses);
   clearForm();
   renderOverview();
   showTab('expenses');
 }
 function clearForm() {
-  ['f-desc', 'f-amount', 'f-notes'].forEach(id => document.getElementById(id).value = '');
+  ['f-desc', 'f-amount', 'f-notes', 'f-vendor'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-date').value = todayStr();
-  document.getElementById('f-recurring').checked = false;
+  document.getElementById('f-payment').value = '';
   buildCatSelect('f-cat'); onCatChange(); fSelMember = null;
 }
 function deleteExpense(id) {
@@ -470,7 +489,8 @@ function openEdit(id) {
   document.getElementById('e-amount').value = e.amount;
   document.getElementById('e-date').value = e.date;
   document.getElementById('e-notes').value = e.notes || '';
-  document.getElementById('e-recurring').checked = !!e.recurring;
+  document.getElementById('e-payment').value = e.payment || '';
+  document.getElementById('e-vendor').value = e.vendor || '';
   buildCatSelect('e-cat');
   document.getElementById('e-cat').value = e.category;
   buildSubCatSelect('e-subcat', e.category);
@@ -491,10 +511,11 @@ function saveEdit() {
   const cat = document.getElementById('e-cat').value;
   const subcat = document.getElementById('e-subcat').value || '';
   const notes = document.getElementById('e-notes').value.trim();
-  const recurring = document.getElementById('e-recurring').checked;
+  const payment = document.getElementById('e-payment').value;
+  const vendor = document.getElementById('e-vendor').value.trim();
   if (!desc || !amount) return;
   const idx = expenses.findIndex(x => x.id === editId);
-  if (idx >= 0) expenses[idx] = { ...expenses[idx], desc, amount, date, category: cat, subCategory: subcat, member: eSelMember || null, notes, recurring };
+  if (idx >= 0) expenses[idx] = { ...expenses[idx], desc, amount, date, category: cat, subCategory: subcat, member: eSelMember || null, notes, payment, vendor };
   saveData(expenses); closeModal(); renderExpenses(); renderOverview();
 }
 function closeModal() { document.getElementById('edit-modal').classList.remove('open'); editId = null; }
@@ -507,11 +528,12 @@ function expLabel(e) {
   return parts.join(' › ');
 }
 function renderExpItem(e, showActions) {
+  const paymentBadge = e.payment ? `<span class="badge" style="background:#f0f0f0;color:#555">${e.payment}</span>` : '';
   return `<div class="exp-item">
     <div class="cat-dot" style="background:${CAT_MAP[e.category] || '#888'}"></div>
     <div class="exp-info">
-      <div class="exp-name">${e.desc}${e.recurring ? '<span class="badge recurring">Recurring</span>' : ''}${e.member ? `<span class="badge member">${e.member}</span>` : ''}</div>
-      <div class="exp-meta">${expLabel(e)}${e.notes ? ' · ' + e.notes : ''} · ${e.date}</div>
+      <div class="exp-name">${e.desc}${paymentBadge}${e.member ? `<span class="badge member">${e.member}</span>` : ''}</div>
+      <div class="exp-meta">${expLabel(e)}${e.vendor ? ' · ' + e.vendor : ''}${e.notes ? ' · ' + e.notes : ''} · ${e.date}</div>
     </div>
     <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
       <div class="exp-amount">${fmtINR(e.amount)}</div>
@@ -538,13 +560,13 @@ function renderOverview() {
   const spent = mExp.reduce((s, e) => s + e.amount, 0);
   const totalBudget = Object.values(budgets).reduce((s, v) => s + (v || 0), 0);
   const left = totalBudget - spent;
-  const recurring = expenses.filter(e => e.recurring).reduce((s, e) => s + e.amount, 0);
+  const avg = mExp.length ? spent / mExp.length : 0;
   document.getElementById('ov-spent').textContent = fmtINR(spent);
   const lEl = document.getElementById('ov-left');
   lEl.textContent = fmtINR(Math.abs(left));
   lEl.className = 'metric-val ' + (left < 0 ? 'danger' : 'success');
   document.getElementById('ov-count').textContent = mExp.length;
-  document.getElementById('ov-recurring').textContent = fmtINR(recurring);
+  document.getElementById('ov-recurring').textContent = fmtINR(avg);
   const rl = document.getElementById('recent-list');
   const recent = mExp.slice(0, 5);
   rl.innerHTML = recent.length ? recent.map(e => renderExpItem(e, false)).join('') : '<div class="empty">No expenses this month</div>';
@@ -714,7 +736,7 @@ function exportCSV() {
   const cat = document.getElementById('filter-cat').value;
   let filtered = expenses.filter(e => monthKey(e.date) === month);
   if (cat) filtered = filtered.filter(e => e.category === cat);
-  const rows = [['Date', 'Description', 'Category', 'Sub-Category', 'Member', 'Amount', 'Notes', 'Recurring'], ...filtered.map(e => [e.date, e.desc, e.category, e.subCategory || '', e.member || '', e.amount, e.notes || '', e.recurring ? 'Yes' : 'No'])];
+  const rows = [['Date', 'Description', 'Category', 'Sub-Category', 'Member', 'Amount', 'Payment Mode', 'Vendor', 'Notes'], ...filtered.map(e => [e.date, e.desc, e.category, e.subCategory || '', e.member || '', e.amount, e.payment || '', e.vendor || '', e.notes || ''])];
   const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = `expenses_${month}.csv`; a.click();
 }
@@ -724,8 +746,8 @@ function exportPDF() {
   let filtered = expenses.filter(e => monthKey(e.date) === month);
   if (cat) filtered = filtered.filter(e => e.category === cat);
   const total = filtered.reduce((s, e) => s + e.amount, 0);
-  const rows = filtered.map(e => `<tr><td>${e.date}</td><td>${e.desc}</td><td>${e.category}</td><td>${e.subCategory || ''}</td><td>${e.member || ''}</td><td style="text-align:right">${fmtINR(e.amount)}</td></tr>`).join('');
-  const html = `<html><head><style>body{font-family:sans-serif;padding:24px}h2{margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ddd;padding:5px 8px}th{background:#f5f5f5}.total{text-align:right;font-weight:bold;margin-top:10px;font-size:14px}</style></head><body><h2>Expenses — ${month}</h2><table><tr><th>Date</th><th>Description</th><th>Category</th><th>Sub-category</th><th>Member</th><th>Amount</th></tr>${rows}</table><div class="total">Total: ${fmtINR(total)}</div></body></html>`;
+  const rows = filtered.map(e => `<tr><td>${e.date}</td><td>${e.desc}</td><td>${e.category}</td><td>${e.subCategory || ''}</td><td>${e.member || ''}</td><td>${e.payment || ''}</td><td>${e.vendor || ''}</td><td style="text-align:right">${fmtINR(e.amount)}</td></tr>`).join('');
+  const html = `<html><head><style>body{font-family:sans-serif;padding:24px}h2{margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #ddd;padding:5px 8px}th{background:#f5f5f5}.total{text-align:right;font-weight:bold;margin-top:10px;font-size:14px}</style></head><body><h2>Expenses — ${month}</h2><table><tr><th>Date</th><th>Description</th><th>Category</th><th>Sub-category</th><th>Member</th><th>Payment</th><th>Vendor</th><th>Amount</th></tr>${rows}</table><div class="total">Total: ${fmtINR(total)}</div></body></html>`;
   const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
 }
 
